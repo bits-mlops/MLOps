@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-model-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-model
+  template:
+    metadata:
+      labels:
+        app: ml-model
+    spec:
+      containers:
+        - name: ml-model
+          image: bitsmlops.azurecr.io/mlops:1688a6f1d8b6a2b3ada360486365dcf6085cdd2a
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "1"
+            limits:
+              memory: "4Gi"
+              cpu: "1"
+          envFrom:
+            - secretRef:
+                name: ml-model-secrets
