@@ -12,8 +12,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
-from src.utils import get_next_version
-
 def test_get_next_version():
     """
     Test if get_next_version function returns correct version format.
