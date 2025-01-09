@@ -12,7 +12,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
-from src.train import get_next_version, train_model
+from src.utils import get_next_version
 
 def test_get_next_version():
     """
