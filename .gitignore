@@ -51,3 +51,6 @@ htmlcov/
 
 # Distribution
 *.tar.gz
+
+# Misc
+deployment/k8s/secret.yml
