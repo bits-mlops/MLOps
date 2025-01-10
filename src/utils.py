@@ -8,6 +8,8 @@ from packaging import version
 import traceback
 from typing import Tuple, Dict, Any
 from config import Config
+from dvc_storage_manager import StorageManager
+import os
 
 def init_azure_ml() -> bool:
     """Initialize Azure ML client"""
@@ -69,3 +71,76 @@ def get_next_version(experiment_name: str) -> str:
     v = version.parse(latest)
     print("current verision",v)
     return f"{v.major}.{v.minor}.{v.micro + 1}"
+
+def init_storage() -> bool:
+    """Initialize storage and ensure latest dataset is available."""
+    print("Initialize DVC")
+    try:
+        storage_manager = StorageManager()
+        result = storage_manager.initialize_storage()
+        print(f"Storage initialized: {result}")
+        return True
+    except Exception as e:
+        print(f"Failed to initialize storage: {traceback.format_exc()}")
+        return False
+
+def upload_new_version(file_obj) -> Dict[str, str]:
+    """Upload new dataset version."""
+    try:
+        # Save file temporarily
+        temp_path = os.path.join('src/data', 'temp_upload.csv')
+        file_obj.save(temp_path)
+        
+        # Upload using storage manager
+        storage_manager = StorageManager()
+        result = storage_manager.upload_dataset(temp_path)
+        
+        # Clean up
+        os.remove(temp_path)
+        
+        return result
+    except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise Exception(f"Failed to upload dataset: {str(e)}")
+
+def get_dataset_versions() -> Dict[str, Any]:
+    """Get all available dataset versions."""
+    try:
+        storage_manager = StorageManager()
+        return storage_manager.get_versions()
+    except Exception as e:
+        raise Exception(f"Failed to get versions: {str(e)}")
+
+def load_dataset_version(version: str) -> Dict[str, str]:
+    """Load specific dataset version for training."""
+    try:
+        storage_manager = StorageManager()
+        return storage_manager.load_version(version)
+    except Exception as e:
+        raise Exception(f"Failed to load version: {str(e)}")
+
+def get_current_dataset_info() -> Dict[str, str]:
+    """Get information about the currently used dataset version."""
+    try:
+        storage_manager = StorageManager()
+        versions = storage_manager.get_versions()
+        current_version = next((v for v in versions["versions"] if v["current"]), None)
+        if not current_version:
+            return {
+                "version": "unknown",
+                "filename": "unknown",
+                "created_at": "unknown"
+            }
+        return {
+            "version": current_version["version"],
+            "filename": current_version["filename"],
+            "created_at": current_version["created_at"]
+        }
+    except Exception as e:
+        print(f"Failed to get current dataset info: {str(e)}")
+        return {
+            "version": "unknown",
+            "filename": "unknown",
+            "created_at": "unknown"
+        }

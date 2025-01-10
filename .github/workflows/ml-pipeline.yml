@@ -43,6 +43,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_WORKSPACE_NAME: ${{ secrets.AZURE_WORKSPACE_NAME }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: |
           coverage run -m pytest
           coverage report
@@ -63,6 +64,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           AZURE_WORKSPACE_NAME: ${{ secrets.AZURE_WORKSPACE_NAME }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: |
           docker build \
             --build-arg AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
@@ -71,5 +73,6 @@ jobs:
             --build-arg AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}" \
             --build-arg AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP}" \
             --build-arg AZURE_WORKSPACE_NAME="${AZURE_WORKSPACE_NAME}" \
+            --build-arg AZURE_STORAGE_CONNECTION_STRING="${AZURE_STORAGE_CONNECTION_STRING}" \
             -t ${{ secrets.AZURE_REGISTRY_URL }}/mlops:${{ github.sha }} .
           docker push ${{ secrets.AZURE_REGISTRY_URL }}/mlops:${{ github.sha }}
