@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from utils import init_azure_ml, load_and_split_data, get_next_version, load_dataset_version, upload_new_version, get_dataset_versions, init_storage, get_current_dataset_info
-from model import train_model_with_tuning, train_model_without_tuning
+from model import train_model_with_tuning, train_model_without_tuning, retune_model
 from config import Config
 import mlflow
 from mlflow.client import MlflowClient
@@ -27,18 +27,27 @@ def train_with_tuning() -> Dict[str, Any]:
 
         if not init_azure_ml():
             return jsonify({"error": "Failed to initialize Azure ML"}), 500
-
+        
         # Get current dataset information
         dataset_info = get_current_dataset_info()
 
         X_train, X_test, y_train, y_test = load_and_split_data(data_path)
         current_version = get_next_version(experiment_name)
         
+        # Parameters for tuning
+        hyperparameters = {
+        'n_estimators': [10, 30, 50, 100],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+        }
+
+
         print("mlflow setting experiment - ",experiment_name)
         mlflow.set_experiment(experiment_name)
         with mlflow.start_run(run_name=f"my_model_v{current_version}"):
             model, mse, r2e, best_params = train_model_with_tuning(
-                X_train, X_test, y_train, y_test, random_state=random_state
+                X_train, X_test, y_train, y_test, hyperparameters, random_state=random_state
             )
             
             for param_name, param_value in best_params.items():
@@ -109,6 +118,70 @@ def train_without_tuning() -> Dict[str, Any]:
             return jsonify({
                 "status": "success",
                 "version": current_version,
+                "dataset": {
+                    "version": dataset_info["version"],
+                    "filename": dataset_info["filename"],
+                    "created_at": dataset_info["created_at"]
+                },
+                "metrics": {
+                    "mse": mse,
+                    "r2e": r2e
+                }
+            })
+
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+    
+@app.route('/reTuneWithParameters', methods=['POST'])
+def re_tune_with_parameters() -> Dict[str, Any]:
+    """retune model endpoint with hyperparameters."""
+    print("train started")
+    try:
+        data = request.get_json()
+        data_path = data.get('data_path', Config.DEFAULT_DATA_PATH)
+        experiment_name = data.get('experiment_name', Config.DEFAULT_EXPERIMENT_NAME)
+
+        # Parameters for tuning
+        hyperparameters = {
+            'n_estimators': data.get('n_estimators', 10),
+            'max_depth': data.get('max_depth',None),
+            'min_samples_split': data.get('min_samples_split', 2),
+            'min_samples_leaf': data.get('min_samples_leaf', 1),
+        }
+
+        if not init_azure_ml():
+            return jsonify({"error": "Failed to initialize Azure ML"}), 500
+        
+        # Get current dataset information
+        dataset_info = get_current_dataset_info()
+
+        X_train, X_test, y_train, y_test = load_and_split_data(data_path)
+        current_version = get_next_version(experiment_name)
+
+
+        print("mlflow setting experiment - ",experiment_name)
+        mlflow.set_experiment(experiment_name)
+        with mlflow.start_run(run_name=f"my_model_v{current_version}"):
+
+             # Retune model with new hyperparameters
+            model, mse, r2e = retune_model(
+                X_train, X_test, y_train, y_test, hyperparameters
+            )
+            
+            for param_name, param_value in hyperparameters.items():
+                mlflow.log_param(param_name, param_value)
+            
+            mlflow.log_metric("mse", mse)
+            mlflow.log_metric("r2e", r2e)
+            mlflow.sklearn.log_model(model, "random_forest_housing")
+            mlflow.set_tag("version", current_version)
+            mlflow.set_tag("dataset_version", dataset_info["version"])
+            mlflow.set_tag("dataset_filename", dataset_info["filename"])
+            print("new model version-",current_version)
+            return jsonify({
+                "status": "success",
+                "version": current_version,
+                "parameters": hyperparameters,
                 "dataset": {
                     "version": dataset_info["version"],
                     "filename": dataset_info["filename"],
