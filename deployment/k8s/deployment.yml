@@ -14,13 +14,13 @@ spec:
     spec:
       containers:
         - name: ml-model
-          image: bitsmlops.azurecr.io/mlops:1688a6f1d8b6a2b3ada360486365dcf6085cdd2a
+          image: bitsmlops.azurecr.io/mlops:510a53cc63fdcd80ad4e2b68ea53a924bb5c5ca5
           ports:
             - containerPort: 8080
           resources:
             requests:
-              memory: "4Gi"
-              cpu: "1"
+              memory: "2Gi"
+              cpu: "0.5"
             limits:
               memory: "4Gi"
               cpu: "1"
